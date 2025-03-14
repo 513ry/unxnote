@@ -1,0 +1,18 @@
+*
+!*/
+!.gitignore
+
+# Build
+!CMakeList.txt
+!unxnote.gemspec
+!lib/unxnote/[a-z]*.rb
+
+# Fonts
+!ttf/[A-Z]*.ttf
+
+# Source
+!src/[a-z]*.c
+
+# Include
+!include/unxnote.h
+!include/unxnote/[a-z]*.h
