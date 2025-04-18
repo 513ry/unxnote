@@ -36,34 +36,55 @@
 
 #include "common.h"
 
+typedef uint32_t xcb_gcontext_t;
+typedef struct xcb_connection_t xcb_connection_t;
+typedef uint32_t xcb_window_t;
 typedef struct FT_FaceRec_ *FT_Face;
 
 #define FONT_SIZE UINT32_C(16)
 
-/*
+/**
  * Initialize font
  */
+
 bool init_font();
 
-/*
+/**
  * Create a new font from file
  */
+
 FT_Face new_font(char *font_path);
 
-/*
+/**
  * Free library and all allocated font faces
  */
+
 void free_font(unsigned int, ...);
 
-/*
+/**
  * Draw font using XCB graphical context
  */
+
 void draw_text(xcb_connection_t *conn, xcb_window_t window, xcb_gcontext_t gc,
 	       FT_Face face, const char *text, uint32_t x, uint32_t y);
 
-/*
- * Encode glyph nubler to dynamic string
+/**
+ * Encode glyph nubler to UTF8 characters
  */
-uint8_t encode_utf8(uint32_t glyph, char **out);
+
+const char *utf8_encode(uint32_t glyph);
+
+#define _CHAR_AT(INDEX, ...)				\
+  ((__VA_ARGS__ >> (uint64_t)8 * INDEX & 0xff) << INDEX * 8)
+
+#define _CHAR_FOUR(...)	                                \
+  _CHAR_AT(0, __VA_ARGS__) |				\
+  _CHAR_AT(1, __VA_ARGS__) |				\
+  _CHAR_AT(2, __VA_ARGS__) |				\
+  _CHAR_AT(3, __VA_ARGS__) |				\
+  _CHAR_AT(4, __VA_ARGS__)
+
+#define HEX2UTF8(...)					\
+  ({uint64_t tmp = _CHAR_FOUR((uint64_t)__VA_ARGS__); &tmp;})
 
 #endif // _FONT_H

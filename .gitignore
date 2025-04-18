@@ -2,17 +2,22 @@
 !*/
 !.gitignore
 
+# Doc
+README.md
+
 # Build
 !CMakeList.txt
 !unxnote.gemspec
-!lib/unxnote/[a-z]*.rb
+!Rakefile
+!lib/build/[a-z]*.rb
 
 # Fonts
 !ttf/[A-Z]*.ttf
 
 # Source
 !src/[a-z]*.c
+!src/**/[a-z]*.c
 
 # Include
-!include/unxnote.h
 !include/unxnote/[a-z]*.h
+!include/**/[a-z]*.h

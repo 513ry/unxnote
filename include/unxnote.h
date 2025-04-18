@@ -34,26 +34,42 @@
 #ifndef _UNXNOTE_H
 #define _UNXNOTE_H
 
+/* Target C99 SUSv2 source */
+
+#ifdef __cplusplus
+#define __STDC_LIMIT_MACROS
+#define __STDC_CONSTANT_MACROS
+#define __STDC_FORMAT_MACROS
+#endif
+#define _XOPEN_SOURCE 500
+
 #include "unxnote/common.h"
 #include "unxnote/cookie.h"
+#include "unxnote-common/bug.h"
 
-#define UNXNOTE_FONT "../ttf/VictorMonoNerdFont-Medium.ttf"
+/* Include XCB for window managment */
 
-/*
+#include <xcb/xcb.h>
+
+#define UNXNOTE_FAILED (int)888
+
+/**
  * Initialize UNXNote Library
  *
  * @return true on success and false if window fails to initialize
  */
-bool unxnote_init(unsigned int n, ...);
 
-/*
+void unxnote_init(unsigned int n, ...);
+
+/**
  * Free library data and close X connection
  *
  * @return true on success and false if not initialized
  */
-bool unxnote_free(void);
 
-/*
+void unxnote_free(void);
+
+/**
  * Display a notification with a custom vendor cookie
  *
  * @param vendor - UNXNoteVendor enumerator
@@ -61,9 +77,18 @@ bool unxnote_free(void);
  * @param msg - Message buffer
  * @return true on success and false on any error
  */
-bool unxnote_msg(char *cookie, char *from, char *msg);
 
-/*
+void unxnote_open_window(const char *cookie_name, char *from, char *msg);
+
+/**
+ * Display UNXNote window manager
+ *
+ * @return index of the closed window
+ */
+
+void unxnote_update();
+
+/**
  * Display a primitive notification without cookie
  *
  * @param glyph - UTF8 glyph
@@ -74,6 +99,7 @@ bool unxnote_msg(char *cookie, char *from, char *msg);
  * @param expire - Time in ms before notification expire. 0 for none
  * @raturn true on success and false on any error
  */
+
 bool unxnote_generic(char glyph, char *title, char *msg, uint16_t fg_color,
 		     uint16_t bg_color, uint16_t expire);
 

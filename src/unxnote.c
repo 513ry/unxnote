@@ -1,147 +1,317 @@
 #include "unxnote.h"
 #include "unxnote/window.h"
 #include "unxnote/font.h"
-#include "unxnote/hash.h"
 
+#include <errno.h>
 #include <malloc.h>
 #include <stdarg.h>
 #include <string.h>
+#include <poll.h>
+
+#include "unxnote/hash.h"
+#include "unxnote/hash_config.h"
+
+#define TIMEOUT_MS 20
+
+/**
+ * Window data
+ */
+
+typedef struct {
+  const char *cookie_name;
+  char *title;
+  char *msg;
+  xcb_window_t window;
+} UNXNoteWindow;
+
+/**
+ * Window manager
+ */
+
+typedef struct {
+  size_t count;
+  UNXNoteWindow *windows;
+  PT_Hash *contexts;
+  PT_Hash *cookies;
+  FT_Face font;
+} UNXNoteManager;
+
+static UNXNoteManager unxnote_manager = {
+  .count = 0,
+  .windows = NULL,
+  .contexts = NULL,
+  .cookies = NULL,
+  .font = NULL,
+};
 
 #define BUTTON_WIDTH UINT32_C(20)
 #define BUTTON_HEIGHT UINT32_C(20)
 #define BUTTON_X_POS WINDOW_WIDTH - BUTTON_WIDTH
 #define BUTTON_Y_POS UINT32_C(0)
+#define UNXNOTE_FONT "../ttf/VictorMonoNerdFont-Medium.ttf"
 
-static FT_Face font = NULL;
-static PT_Hash *cookies = NULL;
-static bool initialized = false;
-static uint16_t window_n = 0;
+static void handle_event(xcb_generic_event_t *event);
+static void draw_context(int window);
+static void unxnote_free_window(UNXNoteWindow window);
+static void unxnote_close_window(xcb_window_t window_id);
+static const int find_window_index(xcb_window_t window_handler);
+static UNXNoteWindow *find_window(xcb_window_t window_handler);
 
 // --- API Definitions
 
-bool
+void
 unxnote_init(unsigned int n, ...)
 {
-  /* Define application font */
-  init_font();
-  font = new_font(UNXNOTE_FONT);
-
-  /* Initialize X session */
   if (!init_window())
-    return false;
+    unxnote_bug("init_window", errno);
+
+  init_font();
+  unxnote_manager.font = new_font(UNXNOTE_FONT);
+
+  /* Create empty context hash */
+
+  unxnote_manager.contexts = pt_hash_new(0);
 
   /* Create cookie hash */
+
   if (n == 0) {
-    UNXNoteCookie cookie = (UNXNoteCookie){
-      .glyph = 0xf4f6, .title = "UNXNote", 0xff0000, 0x222233
+    HASH_UNION_TYPE value;
+    value.cookie = (UNXNoteCookie){
+      .glyph = 0xeb54, .title = "UNXNote", .bg_color = 0x222233, .fg_color = 0x222233
     };
-    cookies = pt_hash_new(1, "default", cookie);
+    unxnote_manager.cookies = pt_hash_new(0);
+    pt_hash_set(unxnote_manager.cookies, "default", value);
   } else {
+    unxnote_manager.cookies = pt_hash_new(0);
     va_list ap;
     va_start(ap, n);
     for (unsigned int i = 0; i < n; ++i) {
       char *key = va_arg(ap, char *);
-      UNXNoteCookie *cookie = va_arg(ap, UNXNoteCookie *);
-      pt_hash_set(cookies, key, *cookie);
+      HASH_UNION_TYPE value;
+      value.cookie = va_arg(ap, UNXNoteCookie);
+      pt_hash_set(unxnote_manager.cookies, key, value);
     }
     va_end(ap);
   }
-
-  return initialized = true;
+  unxnote_manager.windows = malloc(0);
 }
 
-bool
+void
 unxnote_free(void)
 {
-  if (!initialized)
-    return false;
-  
-  free_font(1, font);
+  for (size_t i = 0; i < unxnote_manager.count; i++)
+    unxnote_free_window(unxnote_manager.windows[i]);
+  free(unxnote_manager.windows);
+  unxnote_manager.count = 0;
+  free_font(1, unxnote_manager.font);
   free_window();
-  pt_hash_free(cookies);
-  initialized = false;
-  return true;
+  pt_hash_free(unxnote_manager.cookies);
+  pt_hash_free(unxnote_manager.contexts);
 }
 
 /*
- * Display UNXNote message in X
+ * Register a UNXNote notification window
  */
-bool
-unxnote_msg(char *cookie_name, char *from, char *msg)
+
+void
+unxnote_open_window(const char *cookie_name, char *from, char *msg)
 {
-  /* Create a new X window */
-  xcb_window_t window = new_window(window_n);
-  ++window_n;
-  
+
   /* Get the window cookie */
-  UNXNoteCookie cookie = pt_hash_get(cookies, cookie_name);
-  
-  /* Define graphical contexts */
-  const xcb_gcontext_t bg_gc = xcb_generate_id(x_conn.conn);
-  const uint32_t bg_values[] = {cookie.bg_color};
-  xcb_create_gc(x_conn.conn, bg_gc, window, XCB_GC_FOREGROUND, bg_values);
-  const xcb_gcontext_t text_gc = xcb_generate_id(x_conn.conn);
-  const uint32_t text_values[] = {cookie.fg_color};
-  xcb_create_gc(x_conn.conn, text_gc, window, XCB_GC_FOREGROUND, text_values);
-  const xcb_gcontext_t button_gc = xcb_generate_id(x_conn.conn);
-  const uint32_t button_values[] = {0x333333};
-  xcb_create_gc(x_conn.conn, button_gc, window, XCB_GC_FOREGROUND, button_values);
 
-  char *glyph_string = NULL;
-  encode_utf8(cookie.glyph, &glyph_string);
+  UNXNoteCookie cookie;
+  if (!({HASH_UNION_TYPE tmp;
+         bool f = pt_hash_get(unxnote_manager.cookies, cookie_name, &tmp);
+         cookie = tmp.cookie;
+	 f;
+       }))
+    unxnote_bug("cookie could not be retrived", EXIT_FAILURE);
 
-  bool done = false;
-  const uint16_t header_size = (uint16_t)strlen(glyph_string) + (uint16_t)strlen(cookie.title) + UINT16_C(2) + 1;
+  /* Reallocate windows array with one more index */
+
+  UNXNoteWindow *new_array = realloc(unxnote_manager.windows,
+				     (unxnote_manager.count + 1) *
+				     sizeof(UNXNoteWindow));
+  if (!new_array)
+    unxnote_bug("realloc", EXIT_FAILURE);
+
+  UNXNoteWindow *new_win = &new_array[unxnote_manager.count];
+
+  /* Create header string */
+
+  const char *cookie_glyph = utf8_encode(cookie.glyph);
+  const uint16_t header_size =
+    UINT16_C(6) + UINT16_C(strlen(cookie.title)) +
+    UINT16_C(strlen(from)) + UINT16_C(strlen(cookie_glyph));
   char header[header_size];
-  snprintf(header, header_size, "%s  %s", glyph_string, cookie.title);
+  snprintf(header, header_size, "%s  %s - %s",
+	   cookie_glyph, cookie.title, from);
+  new_win->cookie_name = cookie_name;
+  new_win->title = strdup(header);
+  new_win->msg = strdup(msg);
+  new_win->window = new_window(unxnote_manager.count);
 
-  xcb_generic_event_t *event;
-  while (!done && (event = xcb_wait_for_event(x_conn.conn))) {
-    switch (event->response_type & ~0x80) {
-    case XCB_EXPOSE: {
-      // Clear window background
-      xcb_rectangle_t rect = {0, 0, WINDOW_WIDTH, WINDOW_MIN_HEIGHT};
-      xcb_poly_fill_rectangle(x_conn.conn, window, bg_gc, 1, &rect);
+  unxnote_log("new title: %s\n", new_win->title);
+  unxnote_log("new msg: %s\n", new_win->msg);
 
-      // Render title text
-      draw_text(x_conn.conn, window, text_gc, font, header, 3,
-		FONT_SIZE);
+  /* Define new graphical contexts if none is matching */
 
-      // Draw button background
-      xcb_rectangle_t button_rect = {BUTTON_X_POS, BUTTON_Y_POS, BUTTON_WIDTH,
-                                     BUTTON_HEIGHT};
-      xcb_poly_fill_rectangle(x_conn.conn, window, button_gc, 1, &button_rect);
+  HASH_UNION_TYPE value;
 
-      // Render "x" text in the center of the button
-      int x_text_pos = BUTTON_X_POS + BUTTON_WIDTH / 2 - FONT_SIZE / 4;
-      int y_text_pos = BUTTON_Y_POS + BUTTON_HEIGHT / 2 + FONT_SIZE / 4;
-      draw_text(x_conn.conn, window, text_gc, font, "x", x_text_pos, y_text_pos);
-
-      xcb_flush(x_conn.conn);
-      break;
-    }
-    case XCB_BUTTON_PRESS: {
-      xcb_button_press_event_t *bp = (xcb_button_press_event_t *)event;
-      if (bp->event_x >= BUTTON_X_POS &&
-          bp->event_x <= BUTTON_X_POS + BUTTON_WIDTH &&
-          bp->event_y >= BUTTON_Y_POS &&
-          bp->event_y <= BUTTON_Y_POS + BUTTON_HEIGHT) {
-        // Exit if the button is clicked
-        done = true;
-      }
-      break;
-    }
-    }
-    free(event);
+  if (!pt_hash_get(unxnote_manager.contexts, cookie_name, &value)) {
+    value.contexts[0] = xcb_generate_id(x_conn.conn);
+    const uint32_t bg_values[] = {cookie.bg_color};
+    xcb_create_gc(x_conn.conn, value.contexts[0], new_win->window,
+		  XCB_GC_FOREGROUND, bg_values);
+    value.contexts[1] = xcb_generate_id(x_conn.conn);
+    const uint32_t text_values[] = {cookie.fg_color};
+    xcb_create_gc(x_conn.conn, value.contexts[1], new_win->window,
+		  XCB_GC_FOREGROUND, text_values);
+    pt_hash_set(unxnote_manager.contexts, cookie_name, value);
   }
 
-  free(glyph_string);
-  xcb_free_gc(x_conn.conn, bg_gc);
-  xcb_free_gc(x_conn.conn, text_gc);
-  xcb_free_gc(x_conn.conn, button_gc);
-  xcb_destroy_window(x_conn.conn, window);
+  unxnote_manager.windows = new_array;
+  ++unxnote_manager.count;
+}
 
-  return true;
+/*
+ * Display UNXNote window manager
+ */
+
+void
+unxnote_update()
+{
+  bool update = false;
+
+  struct pollfd pfd = {
+    .fd = xcb_get_file_descriptor(x_conn.conn),
+    .events = POLLIN
+  };
+
+  while (true) {
+    {
+      xcb_generic_event_t *event;
+      while ((event = xcb_poll_for_event(x_conn.conn)) != NULL) {
+	update = true;
+        handle_event(event);
+      }
+    }
+    
+    int ret = poll(&pfd, 1, TIMEOUT_MS);
+    if (ret < 0) {
+      unxnote_log("pool failed\n");
+      break;
+    } else if (ret == 0) {
+      break;
+    } else {
+      // POLLIN
+      unxnote_log("polling\n");
+    }
+  };
+
+  if (update)
+    xcb_flush(x_conn.conn);
 }
 
 // -- Static Definitions
+
+static void
+handle_event(xcb_generic_event_t *event)
+{
+  switch (event->response_type & ~0x80) {
+  case XCB_EXPOSE:
+    draw_context(((xcb_expose_event_t *)event)->window);
+    break;
+  case XCB_BUTTON_PRESS:
+    unxnote_close_window(((xcb_button_press_event_t *)event)->event);
+  }
+  free(event);
+  event = NULL;
+}
+
+static void
+draw_context(int window)
+{
+  UNXNoteWindow *current_window = find_window(window);
+  if (current_window == NULL)
+    unxnote_bug("find_window", EXIT_FAILURE);
+
+  /* Get context data */
+
+  HASH_UNION_TYPE value;
+  pt_hash_get(unxnote_manager.contexts, current_window->cookie_name, &value);
+
+  /* Clear window background */
+
+  xcb_rectangle_t rect = {0, 0, WINDOW_WIDTH, WINDOW_MIN_HEIGHT};
+  xcb_poly_fill_rectangle(x_conn.conn, current_window->window,
+			  value.contexts[0], 1, &rect);
+
+  /* Render title text */
+
+  draw_text(x_conn.conn, current_window->window, value.contexts[1],
+	    unxnote_manager.font, current_window->title, 3, FONT_SIZE);
+}
+
+static void
+unxnote_free_window(UNXNoteWindow window)
+{
+  free(window.msg);
+  window.msg = NULL;
+  free(window.title);
+  window.title = NULL;
+  xcb_destroy_window(x_conn.conn, window.window);
+}
+
+static void
+unxnote_close_window(xcb_window_t window_id)
+{
+  const size_t index =
+    find_window_index(window_id);
+  if (index == -1) {
+    unxnote_log("Bug: find_window_index\n");
+    return;
+  }
+  unxnote_free_window(unxnote_manager.windows[index]);
+  if (unxnote_manager.count == 1) {
+    unxnote_manager.windows = NULL;
+    unxnote_manager.count = 0;
+    return;
+  }
+
+  /* Shift elements left */
+
+  for (size_t i = index; i < unxnote_manager.count - 1; ++i) {
+    unxnote_manager.windows[i] = unxnote_manager.windows[i + 1];
+    xcb_destroy_window(x_conn.conn, unxnote_manager.windows[i].window);
+    unxnote_manager.windows[i].window = new_window(i);
+  }
+
+  /* Shrink the array */
+
+  UNXNoteWindow *new_array = realloc(
+    unxnote_manager.windows,
+    (unxnote_manager.count - 1) * sizeof(UNXNoteWindow)
+  );
+  if (!new_array) unxnote_bug("unregister realloc", ENOMEM);
+  unxnote_manager.windows = new_array;
+  --unxnote_manager.count;
+}
+
+static const int
+find_window_index(xcb_window_t window_handler)
+{
+  for (int i = unxnote_manager.count - 1; i >= 0; --i)
+    if (unxnote_manager.windows[(size_t)i].window == window_handler)
+      return i;
+  return -1;
+}
+
+static UNXNoteWindow *
+find_window(xcb_window_t window_handler)
+{
+  for (int i = unxnote_manager.count - 1; i >= 0; --i)
+    if (unxnote_manager.windows[(size_t)i].window == window_handler)
+      return &unxnote_manager.windows[(size_t)i];
+  return NULL;
+}

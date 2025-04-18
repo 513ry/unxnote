@@ -30,24 +30,28 @@
  * DESCRIPTION:
  * Determines screen geometry and draws window on aviable region. 󰟆
  *
- * TODO: Consider changing window.h to windows.h
+ * TODO: Consider changing window.h to screen.h
  */
 
-#ifndef _WINDOW_H
-#define _WINDOW_H
+#if !defined(_WINDOW_H)
+#     define _WINDOW_H
 
-#include "common.h"
+#include "unxnote/common.h"
 
 #define WINDOW_MARGIN UINT32_C(10)
 #define WINDOW_PADDING UINT32_C(3)
 #define WINDOW_WIDTH UINT32_C(320)
-#define WINDOW_MIN_HEIGHT UINT32_C(100) // Height will inflate by number of
-                                        // lines * FONT_SIZE + header if this
-                                        // is not enough
+#define WINDOW_MIN_HEIGHT UINT32_C(100) /* Height will inflate by number of
+					   lines * FONT_SIZE + header */
+
+#include <xcb/randr.h>
+
+extern xcb_void_cookie_t unxnote_xcb_cookie;
 
 /*
  * Structure with pointers to xcb types
  */
+
 typedef struct {
   xcb_connection_t *conn;
   uint32_t screen_width;
@@ -61,26 +65,33 @@ typedef struct {
 
 extern XConnection x_conn;
 
-/*
+/**
  * Initialize XCB connection
+ *
+ * ERRNO codes:
+ * EACCES    - XCB connection has error
+ * ECANCELED - Retriving primary monitor failed
  *
  * @return true on success and false on any error
  */
+
 bool init_window();
 
-/*
+/**
  * Create a new window
  *
  * @param id Window's id determines it's precedence and position
- * @return A XCB window
+ * @return XCB window
  */
-xcb_window_t new_window(uint16_t id);
 
-/*
+xcb_window_t new_window(size_t id);
+
+/**
  * Free XCB connection
  *
  * @return true on success and false on any error
  */
+
 void free_window();
 
 #endif // _WINDOW_H
