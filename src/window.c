@@ -10,6 +10,7 @@
 #include <malloc.h>
 #include <string.h>
 #include <errno.h>
+#include <xcb/randr.h>
 
 #define WINDOW_TYPE "DIALOG"
 
@@ -24,9 +25,6 @@ typedef struct {
   int32_t input_mode;
   uint32_t status;
 } MotifWmHints;
-
-
-xcb_void_cookie_t unxnote_xcb_cookie;
 
 static bool set_window_type(xcb_connection_t *conn, xcb_window_t window);
 static bool get_primary_monitor_geometry(xcb_connection_t *conn, xcb_window_t root,
@@ -94,7 +92,7 @@ xcb_window_t
 new_window(size_t id)
 {
   xcb_window_t window = xcb_generate_id(x_conn.conn);
-  unxnote_xcb_cookie = xcb_create_window(
+  xcb_create_window(
     x_conn.conn, XCB_COPY_FROM_PARENT, window, x_conn.screen_root,
     x_conn.screen_x + x_conn.screen_width - WINDOW_WIDTH - WINDOW_MARGIN,
     x_conn.screen_y + x_conn.screen_height - (WINDOW_MIN_HEIGHT * (id + 1)) -
@@ -104,7 +102,7 @@ new_window(size_t id)
   );
 
   set_window_type(x_conn.conn, window);
-  xcb_void_cookie_t sync_cookie = xcb_map_window(x_conn.conn, window);
+  xcb_map_window(x_conn.conn, window);
   xcb_flush(x_conn.conn);
 
   return window;
@@ -112,11 +110,6 @@ new_window(size_t id)
 
 void free_window()
 {
-  xcb_generic_error_t *error = xcb_request_check(x_conn.conn, unxnote_xcb_cookie);
-  if (error) {
-    printf("XCB error: %d\n", error->error_code);
-    free(error);
-  }
   xcb_disconnect(x_conn.conn);
 }
 

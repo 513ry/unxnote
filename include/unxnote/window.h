@@ -44,9 +44,9 @@
 #define WINDOW_MIN_HEIGHT UINT32_C(100) /* Height will inflate by number of
 					   lines * FONT_SIZE + header */
 
-#include <xcb/randr.h>
-
-extern xcb_void_cookie_t unxnote_xcb_cookie;
+typedef struct xcb_connection_t xcb_connection_t;
+typedef uint32_t xcb_visualid_t;
+typedef uint32_t xcb_window_t;
 
 /*
  * Structure with pointers to xcb types
