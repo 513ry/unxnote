@@ -44,14 +44,11 @@
 #define _XOPEN_SOURCE 500
 
 #include "unxnote/common.h"
-#include "unxnote/cookie.h"
 #include "unxnote-common/bug.h"
 
 /* Include XCB for window managment */
 
 #include <xcb/xcb.h>
-
-#define UNXNOTE_FAILED (int)888
 
 /**
  * Initialize UNXNote Library

@@ -35,8 +35,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <time.h>
-#include <sched.h>
 #include <signal.h>
 
 #include "unxnote-common/pshm_data.h"

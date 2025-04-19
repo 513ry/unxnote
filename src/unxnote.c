@@ -9,7 +9,6 @@
 #include <poll.h>
 
 #include "unxnote/hash.h"
-#include "unxnote/hash_config.h"
 
 #define TIMEOUT_MS 20
 
@@ -127,13 +126,13 @@ unxnote_open_window(const char *cookie_name, char *from, char *msg)
        }))
     unxnote_bug("cookie could not be retrived", EXIT_FAILURE);
 
-  /* Reallocate windows array with one more index */
+  /* Reallocate window array with one more index */
 
   UNXNoteWindow *new_array = realloc(unxnote_manager.windows,
 				     (unxnote_manager.count + 1) *
 				     sizeof(UNXNoteWindow));
   if (!new_array)
-    unxnote_bug("realloc", EXIT_FAILURE);
+    unxnote_bug("realloc", ENOMEM);
 
   UNXNoteWindow *new_win = &new_array[unxnote_manager.count];
 
@@ -150,9 +149,6 @@ unxnote_open_window(const char *cookie_name, char *from, char *msg)
   new_win->title = strdup(header);
   new_win->msg = strdup(msg);
   new_win->window = new_window(unxnote_manager.count);
-
-  unxnote_log("new title: %s\n", new_win->title);
-  unxnote_log("new msg: %s\n", new_win->msg);
 
   /* Define new graphical contexts if none is matching */
 
@@ -187,7 +183,7 @@ unxnote_update()
     .events = POLLIN
   };
 
-  while (true) {
+  do {
     xcb_generic_event_t *event;
     while ((event = xcb_poll_for_event(x_conn.conn)) != NULL) {
       update = true;
@@ -201,9 +197,8 @@ unxnote_update()
       break;
     } else {
       // POLLIN
-      unxnote_log("polling\n");
     }
-  };
+  } while (true);
 
   if (update)
     xcb_flush(x_conn.conn);
