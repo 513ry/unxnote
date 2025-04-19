@@ -82,8 +82,7 @@ init_window()
      screen_width, screen_height,
      screen_x, screen_y,
      screen->root, screen->root_visual,
-     {screen->black_pixel,
-      XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS}};
+     {0, XCB_EVENT_MASK_EXPOSURE | XCB_EVENT_MASK_BUTTON_PRESS}};
 
   return true;
 }
@@ -98,7 +97,7 @@ new_window(size_t id)
     x_conn.screen_y + x_conn.screen_height - (WINDOW_MIN_HEIGHT * (id + 1)) -
     (WINDOW_MARGIN * (id + 1)) - 37, WINDOW_WIDTH, WINDOW_MIN_HEIGHT, 0,
     XCB_WINDOW_CLASS_INPUT_OUTPUT, x_conn.screen_visualid,
-    XCB_CW_BACK_PIXEL | XCB_CW_EVENT_MASK, x_conn.mask
+    XCB_CW_BACK_PIXMAP | XCB_BACK_PIXMAP_NONE | XCB_CW_EVENT_MASK, x_conn.mask
   );
 
   set_window_type(x_conn.conn, window);

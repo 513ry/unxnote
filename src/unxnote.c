@@ -51,7 +51,7 @@ static UNXNoteManager unxnote_manager = {
 #define UNXNOTE_FONT "../ttf/VictorMonoNerdFont-Medium.ttf"
 
 static void handle_event(xcb_generic_event_t *event);
-static void draw_context(int window);
+static void draw_context(xcb_window_t window_id);
 static void unxnote_free_window(UNXNoteWindow window);
 static void unxnote_close_window(xcb_window_t window_id);
 static const int find_window_index(xcb_window_t window_handler);
@@ -182,21 +182,17 @@ void
 unxnote_update()
 {
   bool update = false;
-
   struct pollfd pfd = {
     .fd = xcb_get_file_descriptor(x_conn.conn),
     .events = POLLIN
   };
 
   while (true) {
-    {
-      xcb_generic_event_t *event;
-      while ((event = xcb_poll_for_event(x_conn.conn)) != NULL) {
-	update = true;
-        handle_event(event);
-      }
+    xcb_generic_event_t *event;
+    while ((event = xcb_poll_for_event(x_conn.conn)) != NULL) {
+      update = true;
+      handle_event(event);
     }
-    
     int ret = poll(&pfd, 1, TIMEOUT_MS);
     if (ret < 0) {
       unxnote_log("pool failed\n");
@@ -226,13 +222,12 @@ handle_event(xcb_generic_event_t *event)
     unxnote_close_window(((xcb_button_press_event_t *)event)->event);
   }
   free(event);
-  event = NULL;
 }
 
 static void
-draw_context(int window)
+ draw_context(xcb_window_t window_id)
 {
-  UNXNoteWindow *current_window = find_window(window);
+  UNXNoteWindow *current_window = find_window(window_id);
   if (current_window == NULL)
     unxnote_bug("find_window", EXIT_FAILURE);
 
