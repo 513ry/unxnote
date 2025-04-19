@@ -55,16 +55,12 @@
 
 /**
  * Initialize UNXNote Library
- *
- * @return true on success and false if window fails to initialize
  */
 
 void unxnote_init(unsigned int n, ...);
 
 /**
  * Free library data and close X connection
- *
- * @return true on success and false if not initialized
  */
 
 void unxnote_free(void);
@@ -75,32 +71,14 @@ void unxnote_free(void);
  * @param vendor - UNXNoteVendor enumerator
  * @param from - Message address
  * @param msg - Message buffer
- * @return true on success and false on any error
  */
 
 void unxnote_open_window(const char *cookie_name, char *from, char *msg);
 
 /**
  * Display UNXNote window manager
- *
- * @return index of the closed window
  */
 
 void unxnote_update();
-
-/**
- * Display a primitive notification without cookie
- *
- * @param glyph - UTF8 glyph
- * @param title - Title bar string
- * @param msg
- * @param fg_color
- * @param bg_color
- * @param expire - Time in ms before notification expire. 0 for none
- * @raturn true on success and false on any error
- */
-
-bool unxnote_generic(char glyph, char *title, char *msg, uint16_t fg_color,
-		     uint16_t bg_color, uint16_t expire);
 
 #endif // _UNXNOTE_H
