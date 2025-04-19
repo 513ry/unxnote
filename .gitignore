@@ -6,7 +6,7 @@
 README.md
 
 # Build
-!CMakeList.txt
+!CMakeLists.txt
 !unxnote.gemspec
 !Rakefile
 !lib/build/[a-z]*.rb
