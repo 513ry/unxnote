@@ -47,10 +47,6 @@ free_font(unsigned int n, ...)
   FT_Done_FreeType(ft);
 }
 
-/*
- * Render UTF8 encoded text and draw FT glyph bitmap
- */
-
 void
 draw_text(xcb_connection_t *conn, xcb_window_t window, xcb_gcontext_t gc,
 	  FT_Face face, const char *text, uint32_t x, uint32_t y)
@@ -108,10 +104,9 @@ const char *utf8_encode(uint32_t glyph) {
 
 // --- Static Definitions
 
-/*
+/**
  * UTF-8 to Unicode code point decoder
  */
-
 static uint32_t
 utf8_decode(const char **str)
 {

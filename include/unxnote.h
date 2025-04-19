@@ -51,31 +51,29 @@
 #include <xcb/xcb.h>
 
 /**
- * Initialize UNXNote Library
+ * Initialize UNXNote server.
+ * @param n - Number of initialized cookie
+ * @param Variadic number of key-value pairs
  */
-
 void unxnote_init(unsigned int n, ...);
 
 /**
- * Free library data and close X connection
+ * Free server data and close X connection.
  */
-
 void unxnote_free(void);
 
 /**
- * Display a notification with a custom vendor cookie
+ * Display a notification using a custom vendor cookie.
  *
- * @param vendor - UNXNoteVendor enumerator
- * @param from - Message address
+ * @param cookie_name - Name of the cookie vendor
+ * @param from - Message sender
  * @param msg - Message buffer
  */
-
 void unxnote_open_window(const char *cookie_name, char *from, char *msg);
 
 /**
- * Display UNXNote window manager
+ * Handle X event update loop.
  */
-
 void unxnote_update();
 
 #endif // _UNXNOTE_H

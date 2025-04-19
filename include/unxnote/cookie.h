@@ -3,10 +3,9 @@
 
 #include "common.h"
 
-/*
+/**
  * Window Cookie Class
  */
-
 typedef struct {
   uint32_t glyph;
   char *title;

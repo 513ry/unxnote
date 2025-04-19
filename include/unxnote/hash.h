@@ -63,34 +63,29 @@ typedef struct {
  * @param table - Hash table
  * @return Iterator of type PT_HashIter
  */
-
 PT_HashIter pt_hash_iter(PT_Hash *table);
 
 /**
  * Next iter element
  * @param it - Iterator of type PT_HashIter
  */
-
 bool pt_hash_iter_next(PT_HashIter *it);
 
 /**
  * Parse a file and create new hash
  * @param path - File path
  */
-
 PT_Hash *pt_hash_from_file(const char *path);
 
 /**
  * Initialize new hash
  */
-
 PT_Hash *pt_hash_new(const size_t n, ...);
 
 /**
  * Free hash memory
  * @param table - Hash table
  */
-
 void pt_hash_free(PT_Hash *table);
 
 /**
@@ -98,7 +93,6 @@ void pt_hash_free(PT_Hash *table);
  * @param table - Hash table
  * @return size_t 
  */
-
 const size_t pt_hash_size(PT_Hash *table);
 
 /**
@@ -108,7 +102,6 @@ const size_t pt_hash_size(PT_Hash *table);
  * @param value - Hash value
  * @return Constant key char *
  */
-
 const char *pt_hash_set(PT_Hash *table, const char *key, PT_HashValue value);
 
 /* Linear search by key --- UNDEFINED --- */

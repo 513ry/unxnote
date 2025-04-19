@@ -7,7 +7,6 @@
 /**
  * Custom Hash value types
  */
-
 union HashValue {
   UNXNoteCookie cookie;
   xcb_gcontext_t contexts[2];

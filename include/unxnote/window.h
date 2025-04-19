@@ -74,7 +74,6 @@ extern XConnection x_conn;
  *
  * @return true on success and false on any error
  */
-
 bool init_window();
 
 /**
@@ -83,7 +82,6 @@ bool init_window();
  * @param id Window's id determines it's precedence and position
  * @return XCB window
  */
-
 xcb_window_t new_window(size_t id);
 
 /**
@@ -91,7 +89,6 @@ xcb_window_t new_window(size_t id);
  *
  * @return true on success and false on any error
  */
-
 void free_window();
 
 #endif // _WINDOW_H

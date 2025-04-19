@@ -46,32 +46,27 @@ typedef struct FT_FaceRec_ *FT_Face;
 /**
  * Initialize font
  */
-
 bool init_font();
 
 /**
  * Create a new font from file
  */
-
 FT_Face new_font(char *font_path);
 
 /**
  * Free library and all allocated font faces
  */
-
 void free_font(unsigned int, ...);
 
 /**
- * Draw font using XCB graphical context
+ * Draw FT font using XCB graphical context
  */
-
 void draw_text(xcb_connection_t *conn, xcb_window_t window, xcb_gcontext_t gc,
 	       FT_Face face, const char *text, uint32_t x, uint32_t y);
 
 /**
  * Encode glyph nubler to UTF8 characters
  */
-
 const char *utf8_encode(uint32_t glyph);
 
 #define _CHAR_AT(INDEX, ...)				\

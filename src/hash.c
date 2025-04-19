@@ -174,7 +174,6 @@ pt_hash_set(PT_Hash *table, const char *key, PT_HashValue value)
  * Returns a FNV-1a hash
  * https://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function#FNV-1a_hash
  */
-
 static uint64_t
 hash_number(const char *key)
 {
@@ -191,7 +190,6 @@ hash_number(const char *key)
 /**
  * Helps ```pt_hash_set()``` to set a hash entry
  */
-
 static const char *
 hash_set_entry(HashEntry *entries, size_t capacity, const char *key,
 	       PT_HashValue value, size_t *p_size)
@@ -216,7 +214,6 @@ hash_set_entry(HashEntry *entries, size_t capacity, const char *key,
 /**
  * Expands hash table to twice of it's current capacity
  */
-
 static bool
 hash_expand(PT_Hash *table) {
 
