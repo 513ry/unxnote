@@ -46,7 +46,7 @@
 #include "unxnote/common.h"
 #include "unxnote-common/bug.h"
 
-/* Include XCB for window managment */
+/* Include XCB for window management */
 
 #include <xcb/xcb.h>
 
